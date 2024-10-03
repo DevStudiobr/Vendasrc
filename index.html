@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Venda Santa Rita</title>
+    <link rel="stylesheet" type="text/css" href="styles.css">
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-database.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-storage.js"></script>
+</head>
+<body>
+    <div class="banner">
+        <img src="banner.jpg" alt="Banner Venda Santa Rita">
+    </div>
+    <h1>Venda Santa Rita</h1>
+    <div class="search-bar">
+        <input type="text" id="pesquisa" placeholder="Pesquisar produtos...">
+        <button onclick="buscarProduto()">Pesquisar</button>
+    </div>
+    <select id="categorias">
+        <option value="todos">Todas as Categorias</option>
+    </select>
+    <div id="produtos-recentes"></div>
+    <div id="produtos"></div>
+
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <div id="modal-info"></div>
+        </div>
+    </div>
+
+    <div id="form-container">
+        <h2>Adicionar Produto</h2>
+        <form id="produto-form">
+            <input type="text" id="titulo" placeholder="Título" required><br>
+            <textarea id="descricao" placeholder="Descrição" required></textarea><br>
+            <input type="number" id="preco" placeholder="Preço" required><br>
+            <input type="file" id="imagem" required><br>
+            <input type="text" id="whatsapp" placeholder="WhatsApp" required><br>
+            <button type="submit">Adicionar Produto</button>
+        </form>
+    </div>
+
+    <script>
+    // Firebase Configuration
+    var firebaseConfig = {
+        apiKey: "AIzaSyCzYNZNSqCZkvtzqC8-JIIKExtGVKJC6tc",
+        authDomain: "marketsrc-cb564.firebaseapp.com",
+        databaseURL: "https://marketsrc-cb564-default-rtdb.firebaseio.com",
+        projectId: "marketsrc-cb564",
+        storageBucket: "marketsrc-cb564.appspot.com",
+        messagingSenderId: "929727087008",
+        appId: "1:929727087008:web:d6bd0c309c54da5b1f64c5"
+    };
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    var database = firebase.database();
+    var storage = firebase.storage();
+
+    document.addEventListener("DOMContentLoaded", function() {
+        let todosProdutos = [];
+        const modal = document.getElementById("modal");
+        const modalContent = document.getElementById("modal-info");
+        const closeModal = document.getElementsByClassName("close")[0];
+
+        closeModal.onclick = function() {
+            modal.style.display = "none";
+        };
+
+        window.onclick = function(event) {
+            if (event.target == modal) {
+                modal.style.display = "none";
+            }
+        };
+
+        // Carrega Categorias
+        database.ref('categorias').once('value').then(function(snapshot) {
+            let select = document.getElementById("categorias");
+            snapshot.forEach(function(childSnapshot) {
+                let categoria = childSnapshot.val();
+                let option = document.createElement("option");
+                option.value = categoria.id;
+                option.textContent = categoria.nome;
+                select.appendChild(option);
+            });
+        });
+
+        // Carrega Produtos
+        database.ref('produtos').once('value').then(function(snapshot) {
+            let produtos = [];
+            snapshot.forEach(function(childSnapshot) {
+                let produto = childSnapshot.val();
+                produtos.push(produto);
+            });
+            todosProdutos = produtos;
+            exibirProdutos(todosProdutos);
+            exibirProdutosRecentes(todosProdutos);
+        });
+
+        document.getElementById("categorias").addEventListener("change", function() {
+            let categoriaSelecionada = this.value;
+            if (categoriaSelecionada == "todos") {
+                exibirProdutos(todosProdutos);
+            } else {
+                let produtosFiltrados = todosProdutos.filter(produto => produto.categoria == categoriaSelecionada);
+                exibirProdutos(produtosFiltrados);
+            }
+        });
+
+        function exibirProdutos(produtos) {
+            let produtosDiv = document.getElementById("produtos");
+            produtosDiv.innerHTML = "";
+            produtos.forEach(produto => {
+                let produtoDiv = document.createElement("div");
+                produtoDiv.className = "produto";
+                produtoDiv.innerHTML = `
+                    <img src="${produto.imagem}" alt="${produto.nome}">
+                    <h2>${produto.nome}</h2>
+                    <p class="preco">R$${produto.preco}</p>
+                    <p class="descricao-curta">${produto.descricao.substring(0, 50)}...</p>
+                    <a href="https://wa.me/${produto.whatsapp}" target="_blank" class="whatsapp-button">Conversar no WhatsApp</a>
+                    <button onclick="mostrarDetalhes(${produto.id})">Ver mais</button>
+                `;
+                produtosDiv.appendChild(produtoDiv);
+            });
+        }
+
+        function exibirProdutosRecentes(produtos) {
+            let produtosRecentesDiv = document.getElementById("produtos-recentes");
+            produtosRecentesDiv.innerHTML = "";
+            let produtosRecentes = produtos.slice().sort((a, b) => b.id - a.id).slice(0, 3);
+            produtosRecentes.forEach(produto => {
+                let produtoDiv = document.createElement("div");
+                produtoDiv.className = "produto";
+                produtoDiv.innerHTML = `
+                    <img src="${produto.imagem}" alt="${produto.nome}">
+                    <h2>${produto.nome}</h2>
+                    <p class="preco">R$${produto.preco}</p>
+                    <p class="descricao-curta">${produto.descricao.substring(0, 50)}...</p>
+                    <a href="https://wa.me/${produto.whatsapp}" target="_blank" class="whatsapp-button">Conversar no WhatsApp</a>
+                    <button onclick="mostrarDetalhes(${produto.id})">Ver mais</button>
+                `;
+                produtosRecentesDiv.appendChild(produtoDiv);
+            });
+        }
+
+        window.mostrarDetalhes = function(id) {
+            let produto = todosProdutos.find(prod => prod.id === id);
+            modalContent.innerHTML = `
+                <img src="${produto.imagem}" alt="${produto.nome}">
+                <h2>${produto.nome}</h2>
+                <p>${produto.descricao}</p>
+                <p class="preco">R$${produto.preco}</p>
+                <p><a href="https://wa.me/${produto.whatsapp}" target="_blank" class="whatsapp-button">Conversar no WhatsApp</a></p>
+            `;
+            modal.style.display = "block";
+        };
+
+        document.getElementById('pesquisa').addEventListener('input', function() {
+            let termo = this.value.toLowerCase();
+            let produtosFiltrados = todosProdutos.filter(produto => produto.nome.toLowerCase().includes(termo) || produto.descricao.toLowerCase().includes(termo));
+            exibirProdutos(produtosFiltrados);
+        });
+
+        document.getElementById('produto-form').addEventListener('submit', function(event) {
+            event.preventDefault();
+            let titulo = document.getElementById('titulo').value;
+            let descricao = document.getElementById('descricao').value;
+            let preco = document.getElementById('preco').value;
+            let whatsapp = document.getElementById('whatsapp').value;
+            let imagemFile = document.getElementById('imagem').files[0];
+            
+            let newProductKey = database.ref().child('produtos').push().key;
+            let uploadTask = storage.ref().child('produtos/' + newProductKey + '/' + imagemFile.name).put(imagemFile);
+
+            uploadTask.on('state_changed', function(snapshot) {
+                // Progress function
+            }, function(error) {
+                // Error function
+                console.log(error);
+            }, function() {
+                // Complete function
+                uploadTask.snapshot.ref.getDownloadURL().then(function(downloadURL) {
+                    let novoProduto = {
+                        id: newProductKey,
+                        nome: titulo,
+                        descricao: descricao,
+                        preco: preco,
+                        imagem: downloadURL,
+                        whatsapp: whatsapp,
+                        categoria: "default" // Adicione a lógica para definir a categoria conforme necessário
+                    };
+                    let updates = {};
+                    updates['/produtos/' + newProductKey] = novoProduto;
+                    database.ref().update(updates).then(function() {
+                        alert("Produto adicionado com sucesso!");
+                        document.getElementById('produto-form').reset();
+                        todosProdutos.push(novoProduto);
+                        exibirProdutos(todosProdutos);
+                    }).catch(function(error) {
+                        console.log(error);
+                    });
+                });
+            });
+        });
+    });
+    </script>
+</body>
+</html>

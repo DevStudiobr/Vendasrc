@@ -1,0 +1,11 @@
+[
+  {
+    "id": 2,
+    "nome": "Produto B",
+    "descricao": "Descrição do Produto B",
+    "preco": 200.00,
+    "imagem": "pizza01.png",
+    "whatsapp": "5591888888888",
+    "categoria": "roupas"
+  }
+]
